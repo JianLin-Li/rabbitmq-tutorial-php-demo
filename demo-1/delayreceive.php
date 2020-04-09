@@ -45,7 +45,7 @@ $connection->disconnect();
 
 function callback($envelope, $queue) {
         $msg = $envelope->getBody();
-        echo '['.date('Y-m-d H:i:s')."] " . $msg.PHP_EOL;
+        echo '['.date('Y-m-d H:i:s')."] " . $msg.PHP_EOL.PHP_EOL;
         $queue->nack($envelope->getDeliveryTag());
 }
 

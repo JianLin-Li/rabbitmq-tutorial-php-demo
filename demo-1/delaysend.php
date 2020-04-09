@@ -12,6 +12,8 @@ $routeKey = 'activity_user_grade_rk';
 $exchangeNameDelay = 'activity_user_grade_ex.delay';
 $queueNameDelay = 'activity_user_grade_q.delay';
 
+//优先级最高级别
+$priority = 24;
 
 $connection = new AMQPConnection(array('host' => '127.0.0.1', 'port' => '5672', 'vhost' => '/', 'login' => 'guest', 'password' => 'guest'));
 $connection->connect() or die("Cannot connect to the broker!\n");
@@ -37,7 +39,7 @@ try {
         $queue = new AMQPQueue($channel);
         $queue->setName($queueName);
         $queue->setFlags(AMQP_DURABLE);
-        $queue->setArguments(['x-dead-letter-exchange'=>$exchangeNameDelay]);
+        $queue->setArguments(['x-dead-letter-exchange'=>$exchangeNameDelay, 'x-max-priority'=>$priority]);
         $queue->declare();
         $queue->bind($exchangeName, $routeKey);
         
@@ -49,14 +51,35 @@ try {
         $queueDelay->bind($exchangeNameDelay, $routeKey);
         
         //发送消息
-        $messages[3] = '['.date('Y-m-d H:i:s').']  我是间隔3分钟的数据';
-        $messages[2] = '['.date('Y-m-d H:i:s').']  我是间隔2分钟的数据';
-        $messages[4] = '['.date('Y-m-d H:i:s').']  我是间隔4分钟的数据';
-        $messages[1] = '['.date('Y-m-d H:i:s').']  我是间隔1分钟的数据';
-        $messages[5] = '['.date('Y-m-d H:i:s').']  我是间隔5分钟的数据';
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是12点的数据', 'h'=>12];
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是12点的数据', 'h'=>12];
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是12点的数据', 'h'=>12];
+        
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是13点的数据', 'h'=>13];
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是13点的数据', 'h'=>13];
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是13点的数据', 'h'=>13];
+        
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是14点的数据', 'h'=>14];
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是14点的数据', 'h'=>14];
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是14点的数据', 'h'=>14];
+        
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是15点的数据', 'h'=>15];
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是15点的数据', 'h'=>15];
+        $messages[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是15点的数据', 'h'=>15];
+        
+        shuffle($messages);
+        
+        $temparr[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是打头阵的数据', 'h'=>12];
+        $temparr[] = ['msg'=>'['.date('Y-m-d H:i:s').'] 我是15点的数据', 'h'=>15];
+        $messages = array_merge($temparr, $messages);
+        
+        
         foreach ($messages as $key => $message) {
-            $exchange->publish($message, $routeKey, AMQP_MANDATORY, ['expiration'=>($key * 60000), 'delivery_mode'=>2]);
-            echo $message.PHP_EOL;
+            $time = strtotime(date('Y-m-d ').$message['h'].':00:00');
+            $pri = $priority - $message['h'];
+            $expiration = ($time- time()) * 1000;
+            $exchange->publish($message['msg'], $routeKey, AMQP_MANDATORY, ['expiration'=>$expiration, 'delivery_mode'=>2, 'priority'=>$pri]);
+            echo $message['msg'].' '.$time.' '.$pri.' '.$expiration.' '.PHP_EOL;
         }
         
 } catch (AMQPConnectionException $e) {
